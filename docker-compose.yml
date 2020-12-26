@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  ws0:
+    image: 'ws0'
+    build:
+      context: ./ws0
+    container_name: ws0
+    ports: 
+      - 9001:8080
+    networks:
+      - proxy
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ws0.entrypoints=http"
+      - "traefik.backend=ws0:9001"
+      - "traefik.http.routers.ws0.rule=PathPrefix(`/ws0`)"
+      - "traefik.http.middlewares.ws0pathstrip.stripprefix.prefixes=/ws0"
+      - "traefik.http.routers.ws0.middlewares=ws0pathstrip@docker"
+      - "traefik.docker.network=proxy"
+
+  ws1:
+    image: 'ws1'
+    build:
+      context: ./ws0
+    container_name: ws1
+    ports: 
+      - 9002:8080
+    networks:
+      - proxy
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ws1.entrypoints=http"
+      - "traefik.backend=ws1:9002"
+      - "traefik.http.routers.ws1.rule=PathPrefix(`/ws1/`)"
+      - "traefik.http.middlewares.ws1pathstrip.stripprefix.prefixes=/ws1"
+      - "traefik.http.routers.ws1.middlewares=ws1pathstrip@docker"
+      - "traefik.docker.network=proxy"
+
+  reverse-proxy:
+    # The official v2 Traefik docker image
+    image: traefik:v2.3
+    # Enables the web UI and tells Traefik to listen to docker
+    container_name: reverse-proxy
+    command: --api.insecure=true --providers.docker
+    ports:
+      # The HTTP port
+      - 80:80
+      - 8080:8080
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - proxy
+      - default
+
+networks:
+  proxy:
+    driver: bridge
+  
